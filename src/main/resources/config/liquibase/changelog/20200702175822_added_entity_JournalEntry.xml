@@ -71,6 +71,7 @@
             <column name="new_herd_id" type="numeric"/>
             <column name="sub_state_1" type="numeric"/>
             <column name="sub_state_2" type="numeric"/>
+            <column name="bovine_id" type="numeric"/>
             <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
         </loadData>
     </changeSet>
