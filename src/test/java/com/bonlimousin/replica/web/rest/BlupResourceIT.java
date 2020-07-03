@@ -109,12 +109,12 @@ public class BlupResourceIT {
             .status(DEFAULT_STATUS);
         // Add required entity
         BovineEntity bovine;
-        if (TestUtil.findAll(em, Bovine.class).isEmpty()) {
+        if (TestUtil.findAll(em, BovineEntity.class).isEmpty()) {
             bovine = BovineResourceIT.createEntity(em);
             em.persist(bovine);
             em.flush();
         } else {
-            bovine = TestUtil.findAll(em, Bovine.class).get(0);
+            bovine = TestUtil.findAll(em, BovineEntity.class).get(0);
         }
         blupEntity.setBovine(bovine);
         return blupEntity;
@@ -139,12 +139,12 @@ public class BlupResourceIT {
             .status(UPDATED_STATUS);
         // Add required entity
         BovineEntity bovine;
-        if (TestUtil.findAll(em, Bovine.class).isEmpty()) {
+        if (TestUtil.findAll(em, BovineEntity.class).isEmpty()) {
             bovine = BovineResourceIT.createUpdatedEntity(em);
             em.persist(bovine);
             em.flush();
         } else {
-            bovine = TestUtil.findAll(em, Bovine.class).get(0);
+            bovine = TestUtil.findAll(em, BovineEntity.class).get(0);
         }
         blupEntity.setBovine(bovine);
         return blupEntity;
