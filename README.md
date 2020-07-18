@@ -130,3 +130,15 @@ To configure CI for your project, run the ci-cd sub-generator (`jhipster ci-cd`)
 [running tests page]: https://www.jhipster.tech/documentation-archive/v6.10.0/running-tests/
 [code quality page]: https://www.jhipster.tech/documentation-archive/v6.10.0/code-quality/
 [setting up continuous integration]: https://www.jhipster.tech/documentation-archive/v6.10.0/setting-up-ci/
+
+### Customized Jhipster CI with GitHub Actions
+
+Modified maven setup to be CI friendly
+https://maven.apache.org/maven-ci-friendly.html
+
+If not a release:
+Use git sha in project version and build a docker snapshot-ish, if master
+
+If the trigger is a release:
+Set tag as version on both app and docker image.
+And rollout a new version of image to given kubernets cluster.

@@ -1,0 +1,73 @@
+name: Application CI
+on: 
+    push:
+        # Run for all branches
+        branches:
+            - '**'
+        # Ignore tags, unless created by release
+        tags-ignore:
+            - '*.*'
+    pull_request:
+    release:
+        types: [published]
+jobs:
+    pipeline:
+        name: bonReplicaService pipeline
+        runs-on: ubuntu-latest
+        if: "!contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.pull_request.title, '[skip ci]') && !contains(github.event.pull_request.title, '[ci skip]')"
+        timeout-minutes: 40
+        env:
+            SPRING_OUTPUT_ANSI_ENABLED: DETECT
+            SPRING_JPA_SHOW_SQL: false
+        steps:
+            - uses: actions/checkout@v2
+            - uses: actions/setup-java@v1
+              with:
+                  java-version: '11.x'
+            # Test            
+            - name: Run backend test
+              run: |
+                  chmod +x mvnw
+                  ./mvnw -ntp clean verify
+            # Static code analysis
+            - name: Analyze code with SonarQube              
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+              run: |
+                  if [ -n $SONAR_TOKEN ]; then
+                      ./mvnw -ntp initialize sonar:sonar -Dsonar.organization=frostmarked -Dsonar.host.url=https://sonarcloud.io -Dsonar.projectKey=frostmarked_bonReplicaService
+                  else
+                      echo No SONAR_TOKEN, skipping...
+                  fi            
+            # Build - Snapshot
+            - name: Package snapshot application
+              if: github.event_name != 'release'
+              run: ./mvnw -B -ntp package -Pprod -DskipTests -Dsha1=.${GITHUB_SHA:0:7}
+            - name: Build and publish docker snapshot image for master
+              if: github.event_name != 'release' && github.ref == 'refs/heads/master'
+              run: ./mvnw -ntp jib:build -Djib.to.image=frostmark/bonreplicaservice -Djib.to.auth.username="${{ secrets.DOCKER_USERNAME }}" -Djib.to.auth.password="${{ secrets.DOCKER_PASSWORD }}"
+            # Build - Release
+            - name: Package release application
+              if: github.event_name == 'release'
+              run: ./mvnw -B -ntp package -Pprod -DskipTests -Drevision=${{ github.event.release.tag_name }} -Dsha1= -Dchangelist= 
+            - name: Build and publish docker release image
+              if: github.event_name == 'release'
+              run: ./mvnw -ntp jib:build -Drevision=${{ github.event.release.tag_name }} -Dsha1= -Dchangelist= -Djib.to.image=frostmark/bonreplicaservice -Djib.to.auth.username="${{ secrets.DOCKER_USERNAME }}" -Djib.to.auth.password="${{ secrets.DOCKER_PASSWORD }}"            
+            # Rollout
+            - name: Deploy to k8s cluster
+              if: github.event_name == 'release'
+              uses: steebchen/kubectl@master
+              env:
+                  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+                  KUBECTL_VERSION: "1.15"
+              with:
+                  args: set image --record deployment/bonreplicaservice bonreplicaservice-app=frostmark/bonreplicaservice:${{ github.event.release.tag_name }} -n bonlimousin
+            - name: Verify k8s deployment
+              if: github.event_name == 'release'
+              uses: steebchen/kubectl@master
+              env:
+                  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+                  KUBECTL_VERSION: "1.15"
+              with:
+                  args: '"rollout status deployment/bonreplicaservice -n bonlimousin"'
