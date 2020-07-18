@@ -5,7 +5,7 @@
 
     <groupId>com.bonlimousin.replica</groupId>
     <artifactId>bon-replica-service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>${revision}${sha1}${changelist}</version>
     <packaging>jar</packaging>
     <name>Bon Replica Service</name>
 
@@ -21,7 +21,10 @@
 
     <properties>
         <!-- Build properties -->
-        <maven.version>3.3.9</maven.version>
+        <revision>0.0.1</revision>
+        <changelist>-SNAPSHOT</changelist>
+        <sha1/>
+        <maven.version>3.6.3</maven.version>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -624,7 +627,11 @@
                             <image>adoptopenjdk:11-jre-hotspot</image>
                         </from>
                         <to>
-                            <image>bonreplicaservice:latest</image>
+                            <image>bonreplicaservice</image>
+                            <tags>
+                                <tag>latest</tag>
+                                <tag>${project.version}</tag>
+                            </tags>
                         </to>
                         <container>
                             <entrypoint>
