@@ -1,0 +1,61 @@
+{
+  "name": "JournalEntry",
+  "fields": [
+    {
+      "fieldName": "status",
+      "fieldType": "EntryStatus",
+      "fieldValues": "FOD,IB,TU,RET,UTG",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "date",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "edited",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "herdId",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "required"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "newHerdId",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "subState1",
+      "fieldType": "Integer"
+    },
+    {
+      "fieldName": "subState2",
+      "fieldType": "Integer"
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipType": "many-to-one",
+      "otherEntityName": "bovine",
+      "otherEntityRelationshipName": "journalEntries",
+      "relationshipName": "bovine",
+      "otherEntityField": "earTagId"
+    }
+  ],
+  "changelogDate": "20200702175822",
+  "entityTableName": "bon_replica_journal_entry",
+  "dto": "no",
+  "pagination": "pagination",
+  "service": "serviceClass",
+  "jpaMetamodelFiltering": true,
+  "fluentMethods": true,
+  "readOnly": true,
+  "embedded": false,
+  "clientRootFolder": "",
+  "applications": ["bonGateway", "bonReplicaService"],
+  "microserviceName": "bonReplicaService"
+}

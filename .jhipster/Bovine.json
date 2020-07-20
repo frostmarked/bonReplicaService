@@ -1,0 +1,124 @@
+{
+  "name": "Bovine",
+  "fields": [
+    {
+      "fieldName": "earTagId",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "required", "unique"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "masterIdentifier",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength", "required", "unique"],
+      "fieldValidateRulesMaxlength": "127"
+    },
+    {
+      "fieldName": "country",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "required"],
+      "fieldValidateRulesMinlength": "2",
+      "fieldValidateRulesMaxlength": "6"
+    },
+    {
+      "fieldName": "herdId",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "required"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "birthDate",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "gender",
+      "fieldType": "Gender",
+      "fieldValues": "HEIFER,BULL",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "name",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength", "required"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "bovineStatus",
+      "fieldType": "BovineStatus",
+      "fieldValues": "UNKNOWN,SOLD,MEAT,ON_FARM",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "hornStatus",
+      "fieldType": "HornStatus",
+      "fieldValues": "UNKNOWN,HORNED,POLLED,SCURS,DEHORNED,DISBUDDED",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "matriId",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "patriId",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "weight0",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "max"],
+      "fieldValidateRulesMin": "0",
+      "fieldValidateRulesMax": "99"
+    },
+    {
+      "fieldName": "weight200",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "max"],
+      "fieldValidateRulesMin": "0",
+      "fieldValidateRulesMax": "999"
+    },
+    {
+      "fieldName": "weight365",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "max"],
+      "fieldValidateRulesMin": "0",
+      "fieldValidateRulesMax": "9999"
+    }
+  ],
+  "relationships": [
+    {
+      "relationshipType": "one-to-many",
+      "otherEntityName": "journalEntry",
+      "otherEntityRelationshipName": "bovine",
+      "relationshipName": "journalEntries"
+    },
+    {
+      "relationshipType": "many-to-one",
+      "otherEntityName": "sourceFile",
+      "otherEntityRelationshipName": "bovine",
+      "relationshipName": "sourceFile",
+      "otherEntityField": "id"
+    },
+    {
+      "relationshipType": "one-to-one",
+      "otherEntityName": "blup",
+      "otherEntityRelationshipName": "bovine",
+      "relationshipName": "blup",
+      "ownerSide": false
+    }
+  ],
+  "changelogDate": "20200702175622",
+  "entityTableName": "bon_replica_bovine",
+  "dto": "no",
+  "pagination": "pagination",
+  "service": "serviceClass",
+  "jpaMetamodelFiltering": true,
+  "fluentMethods": true,
+  "readOnly": true,
+  "embedded": false,
+  "clientRootFolder": "",
+  "applications": ["bonGateway", "bonReplicaService"],
+  "microserviceName": "bonReplicaService"
+}

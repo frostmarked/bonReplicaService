@@ -1,0 +1,38 @@
+{
+  "name": "SourceFile",
+  "fields": [
+    {
+      "fieldName": "name",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength", "required"],
+      "fieldValidateRulesMaxlength": "127"
+    },
+    {
+      "fieldName": "zipFile",
+      "fieldType": "byte[]",
+      "fieldTypeBlobContent": "any",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "processed",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "outcome",
+      "fieldType": "String"
+    }
+  ],
+  "relationships": [],
+  "changelogDate": "20200702175522",
+  "entityTableName": "bon_replica_sourcefile",
+  "dto": "no",
+  "pagination": "pagination",
+  "service": "serviceClass",
+  "jpaMetamodelFiltering": true,
+  "fluentMethods": true,
+  "readOnly": false,
+  "embedded": false,
+  "clientRootFolder": "",
+  "applications": ["bonGateway", "bonReplicaService"],
+  "microserviceName": "bonReplicaService"
+}
