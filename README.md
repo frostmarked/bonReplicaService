@@ -1,3 +1,11 @@
+# Note
+
+Visit the parent project https://github.com/frostmarked/bonParent for more information<br>
+<br/>
+<br/>
+<br/>
+<br/>
+
 # bonReplicaService
 
 This application was generated using JHipster 6.10.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v6.10.0](https://www.jhipster.tech/documentation-archive/v6.10.0).
