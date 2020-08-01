@@ -34,5 +34,10 @@
     "otherModules": [],
     "blueprints": []
   },
-  "entities": ["SourceFile", "Bovine", "Blup", "JournalEntry"]
+  "entities": ["SourceFile", "Bovine", "Blup", "JournalEntry"],
+  "generator-jhipster-entity-audit": {
+    "auditFramework": "javers",
+    "auditPage": true,
+    "lastLiquibaseTimestamp": 1596270985000
+  }
 }

@@ -57,5 +57,6 @@
   "embedded": false,
   "clientRootFolder": "",
   "applications": ["bonGateway", "bonReplicaService"],
-  "microserviceName": "bonReplicaService"
+  "microserviceName": "bonReplicaService",
+  "enableEntityAudit": true
 }
