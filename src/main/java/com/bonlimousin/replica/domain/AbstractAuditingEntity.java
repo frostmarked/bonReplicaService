@@ -1,6 +1,7 @@
 package com.bonlimousin.replica.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.javers.core.metamodel.annotation.DiffIgnore;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -26,21 +27,25 @@ public abstract class AbstractAuditingEntity implements Serializable {
     @CreatedBy
     @Column(name = "created_by", nullable = false, length = 50, updatable = false)
     @JsonIgnore
+    @DiffIgnore
     private String createdBy;
 
     @CreatedDate
     @Column(name = "created_date", updatable = false)
     @JsonIgnore
+    @DiffIgnore
     private Instant createdDate = Instant.now();
 
     @LastModifiedBy
     @Column(name = "last_modified_by", length = 50)
     @JsonIgnore
+    @DiffIgnore
     private String lastModifiedBy;
 
     @LastModifiedDate
     @Column(name = "last_modified_date")
     @JsonIgnore
+    @DiffIgnore
     private Instant lastModifiedDate = Instant.now();
 
     public String getCreatedBy() {

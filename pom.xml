@@ -359,6 +359,11 @@
             <artifactId>cucumber-spring</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.javers</groupId>
+            <artifactId>javers-spring-boot-starter-sql</artifactId>
+            <version>5.8.8</version>
+        </dependency>
         <!-- jhipster-needle-maven-add-dependency -->
     </dependencies>
 
