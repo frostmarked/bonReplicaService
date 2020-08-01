@@ -4,6 +4,7 @@ import com.bonlimousin.replica.domain.SourceFileEntity;
 import com.bonlimousin.replica.service.SourceFileService;
 import com.bonlimousin.replica.web.rest.errors.BadRequestAlertException;
 import com.bonlimousin.replica.service.dto.SourceFileCriteria;
+import com.bonlimousin.replica.service.processcsv.SourceFileProcessingService;
 import com.bonlimousin.replica.service.SourceFileQueryService;
 
 import io.github.jhipster.web.util.HeaderUtil;
@@ -19,8 +20,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.validation.Valid;
+import javax.validation.ValidationException;
+
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
@@ -43,10 +48,13 @@ public class SourceFileResource {
     private final SourceFileService sourceFileService;
 
     private final SourceFileQueryService sourceFileQueryService;
+    
+    private final SourceFileProcessingService sourceFileProcessingService;
 
-    public SourceFileResource(SourceFileService sourceFileService, SourceFileQueryService sourceFileQueryService) {
+    public SourceFileResource(SourceFileService sourceFileService, SourceFileQueryService sourceFileQueryService, SourceFileProcessingService sourceFileProcessingService) {
         this.sourceFileService = sourceFileService;
         this.sourceFileQueryService = sourceFileQueryService;
+        this.sourceFileProcessingService = sourceFileProcessingService;
     }
 
     /**
@@ -140,5 +148,25 @@ public class SourceFileResource {
         log.debug("REST request to delete SourceFile : {}", id);
         sourceFileService.delete(id);
         return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString())).build();
+    }
+    
+    /**
+     * {@code POST  /source-files/:id/process} : Process existing sourceFile.
+     *
+     * @param id the id of the sourceFileEntity to delete.
+     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
+     */
+    @PostMapping("/source-files/{id}/process")
+    public ResponseEntity<SourceFileEntity> processSourceFile(@PathVariable Long id) {
+    	log.debug("REST request to process SourceFile : {}", id);
+    	if(!sourceFileProcessingService.exists(id)) {
+    		throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    	}
+    	try {
+			sourceFileProcessingService.process(id);
+		} catch (IOException e) {
+			throw new ValidationException(e.getMessage());
+		}
+        return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "Processing zip file", id.toString())).build();
     }
 }
