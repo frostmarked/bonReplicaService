@@ -2,6 +2,7 @@ package com.bonlimousin.replica.domain;
 
 import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
+import org.javers.core.metamodel.annotation.DiffIgnore;
 
 import javax.persistence.*;
 import javax.validation.constraints.*;
@@ -29,7 +30,7 @@ public class SourceFileEntity implements Serializable {
     @Column(name = "name", length = 127, nullable = false)
     private String name;
 
-    
+    @DiffIgnore
     @Lob
     @Column(name = "zip_file", nullable = false)
     private byte[] zipFile;
