@@ -1,7 +1,9 @@
 package com.bonlimousin.replica.service.processcsv;
 
 public enum CsvJournalColumns implements CsvColumns {
-	EAR_TAG_ID("idonr", 8);
+	EAR_TAG_ID("idonr", 8),
+	MASTER_IDENTIFIER("idbonr", 9),
+	;
 
 	private final String columnName;
 	private final int columnIndex;

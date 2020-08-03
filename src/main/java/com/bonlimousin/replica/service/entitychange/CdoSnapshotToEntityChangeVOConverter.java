@@ -1,40 +1,33 @@
 package com.bonlimousin.replica.service.entitychange;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.javers.core.metamodel.object.CdoSnapshot;
 
 public class CdoSnapshotToEntityChangeVOConverter {
 
-	public static EntityChangeVO convert(CdoSnapshot snapshot) {
-		EntityChangeVO vo = new EntityChangeVO();
-
-		switch (snapshot.getType()) {
+	public static EntityChangeVO convert(CdoSnapshot from, EntityChangeVO to) {		
+		to.setAction(extractAction(from));
+		to.setEntityType(from.getManagedType().getName());
+		to.setEntityId(from.getGlobalId().value().split("/")[1]);
+		to.setModifiedBy(from.getCommitMetadata().getAuthor());
+		to.setChangedEntityFields(from.getChanged());
+		to.setEntityValue(from.getState().getPropertyNames().stream()
+				.collect(Collectors.toMap(key -> key, key -> from.getPropertyValue(key))));
+		to.setModifiedDate(from.getCommitMetadata().getCommitDate().toInstant(ZoneOffset.UTC));
+		return to;
+	}
+	
+	private static String extractAction(CdoSnapshot from) {
+		switch (from.getType()) {
 		case INITIAL:
-			vo.setAction("CREATE");
-			break;
+			return "CREATE";
 		case UPDATE:
-			vo.setAction("UPDATE");
-			break;
+			return "UPDATE";
 		case TERMINAL:
-			vo.setAction("DELETE");
-			break;
+			return "DELETE";
 		}
-
-		vo.setEntityType(snapshot.getManagedType().getName());
-		vo.setEntityId(snapshot.getGlobalId().value().split("/")[1]);
-		vo.setModifiedBy(snapshot.getCommitMetadata().getAuthor());
-		vo.setChangedEntityFields(snapshot.getChanged());
-		Map<String, Object> map = snapshot.getState().getPropertyNames().stream()
-				.collect(Collectors.toMap(key -> key, key -> snapshot.getPropertyValue(key)));
-		vo.setEntityValue(map);
-		LocalDateTime localTime = snapshot.getCommitMetadata().getCommitDate();
-		Instant modifyDate = localTime.toInstant(ZoneOffset.UTC);
-		vo.setModifiedDate(modifyDate);
-		return vo;
+		return null;
 	}
 }
