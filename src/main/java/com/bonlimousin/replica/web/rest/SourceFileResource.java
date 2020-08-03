@@ -157,14 +157,17 @@ public class SourceFileResource {
      * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
      */
     @PostMapping("/source-files/{id}/process")
-    public ResponseEntity<SourceFileEntity> processSourceFile(@PathVariable Long id) {
+    public ResponseEntity<SourceFileEntity> processSourceFile(@PathVariable Long id, 
+    		@RequestParam(value = "isRunAsync", defaultValue = "true", required = true) boolean isRunAsync, 
+    		@RequestParam(value = "isDryRun", defaultValue = "false", required = true) boolean isDryRun) {
     	log.debug("REST request to process SourceFile : {}", id);
     	if(!sourceFileProcessingService.exists(id)) {
     		throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     	}
     	try {
-			sourceFileProcessingService.process(id);
+			sourceFileProcessingService.process(id, isRunAsync, isDryRun);
 		} catch (IOException e) {
+			log.error("File parsing failed", e);
 			throw new ValidationException(e.getMessage());
 		}
         return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "Processing zip file", id.toString())).build();

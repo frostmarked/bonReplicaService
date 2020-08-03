@@ -17,7 +17,7 @@ import com.bonlimousin.replica.domain.enumeration.Gender;
 
 import liquibase.util.csv.opencsv.CSVReader;
 
-public class CsvRowToBovineEntityConverterTest {
+public class CsvAncestryRowToBovineEntityConverterTest {
 
 	private static final String TEST_CSV_2916 = "src/test/resources/fixtures/csv/sj_harst_2916.csv";
 	
@@ -26,8 +26,9 @@ public class CsvRowToBovineEntityConverterTest {
 		CSVReader csvReader = new CSVReader(new FileReader(TEST_CSV_2916), ',', '"');
 		BovineEntity be = new BovineEntity();
 		csvReader.readNext(); // ignore header
-		CsvRowToBovineEntityConverter.convert(csvReader.readNext(), be);
+		CsvAncestryRowToBovineEntityConverter.convert(csvReader.readNext(), be);
 		assertEquals(2916, be.getEarTagId());
+		assertEquals(15112, be.getHerdId());
 		assertEquals(2713, be.getMatriId());
 		assertEquals(2688, be.getPatriId());
 		assertEquals(Gender.HEIFER, be.getGender());

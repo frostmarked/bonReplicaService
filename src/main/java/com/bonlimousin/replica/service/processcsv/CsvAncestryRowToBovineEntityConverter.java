@@ -11,11 +11,14 @@ import com.bonlimousin.replica.domain.enumeration.BovineStatus;
 import com.bonlimousin.replica.domain.enumeration.Gender;
 import com.bonlimousin.replica.domain.enumeration.HornStatus;
 
-public class CsvRowToBovineEntityConverter {
+public class CsvAncestryRowToBovineEntityConverter {
 
 	public static BovineEntity convert(String[] cells, BovineEntity be) {		
 		String csvEarTagId = cells[CsvAncestryColumns.EAR_TAG_ID.columnIndex()];
 		be.setEarTagId(NumberUtils.createInteger(StringUtils.replace(csvEarTagId, ".0", "")));
+		
+		String csvMasterIdentifier = cells[CsvAncestryColumns.MASTER_IDENTIFIER.columnIndex()];
+		be.setMasterIdentifier(csvMasterIdentifier);
 		
 		String csvName = cells[CsvAncestryColumns.NAME.columnIndex()];
 		be.setName(csvName);
@@ -24,7 +27,7 @@ public class CsvRowToBovineEntityConverter {
 		be.setCountry(StringUtils.lowerCase(csvCountry));
 		
 		String csvHerdId = cells[CsvAncestryColumns.HERD_ID.columnIndex()];
-		be.setHerdId(NumberUtils.createInteger(StringUtils.replace(csvHerdId, ".0", "")));
+		be.setHerdId(NumberUtils.createInteger(StringUtils.trimToNull(StringUtils.replace(csvHerdId, ".0", ""))));
 		
 		String csvBirthDate = cells[CsvAncestryColumns.BIRTH_DATE.columnIndex()];
 		be.setBirthDate(LocalDate.parse(csvBirthDate).atStartOfDay(ZoneId.of("Europe/Stockholm")).toInstant());
@@ -33,10 +36,14 @@ public class CsvRowToBovineEntityConverter {
 		be.setGender("2".equals(csvGender) ? Gender.HEIFER : Gender.BULL);
 				
 		String csvMatriId = cells[CsvAncestryColumns.MATRI_ID.columnIndex()];
-		be.setMatriId(NumberUtils.createInteger(StringUtils.replace(csvMatriId, ".0", "")));
+		Integer matriId = NumberUtils.createInteger(StringUtils.trimToNull(StringUtils.replace(csvMatriId, ".0", "")));
+		matriId = matriId != null ? matriId : 0; // unknown mothers seems to have zero anyway
+		be.setMatriId(matriId);
 		
 		String csvPatriId = cells[CsvAncestryColumns.PATRI_ID.columnIndex()];
-		be.setPatriId(NumberUtils.createInteger(StringUtils.replace(csvPatriId, ".0", "")));
+		Integer patriId = NumberUtils.createInteger(StringUtils.trimToNull(StringUtils.replace(csvPatriId, ".0", "")));
+		patriId = patriId != null ? patriId : 0; // unknown fathers seems to have zero anyway
+		be.setPatriId(patriId);
 		
 		be.setHornStatus(HornStatus.UNKNOWN); // TODO if exists
 		

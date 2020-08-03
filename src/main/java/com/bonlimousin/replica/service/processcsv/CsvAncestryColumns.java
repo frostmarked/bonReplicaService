@@ -2,6 +2,7 @@ package com.bonlimousin.replica.service.processcsv;
 
 public enum CsvAncestryColumns implements CsvColumns {
 	EAR_TAG_ID("idonr", 2),
+	MASTER_IDENTIFIER("idbonr", 5),
 	NAME("bedjurl", 58, true),
 	COUNTRY_ID("idfor", 0),
 	HERD_ID("idbes", 1),
