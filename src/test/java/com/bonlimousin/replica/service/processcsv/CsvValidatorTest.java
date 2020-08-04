@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 public class CsvValidatorTest {
 
-	private static final String TEST_ZIP_FILE = "src/test/resources/fixtures/csv_se015112.zip";
+	private static final String TEST_ZIP_FILE = "src/test/resources/fixtures/csv_se015112_truncated.zip";
 	private static final String TEST_CSV_DIR = "src/test/resources/fixtures/csv";
 
 	@Test

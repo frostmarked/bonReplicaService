@@ -99,6 +99,7 @@ public class SourceFileResourceIT {
 
     @BeforeEach
     public void initTest() {
+    	sourceFileRepository.deleteAll();
         sourceFileEntity = createEntity(em);
     }
 

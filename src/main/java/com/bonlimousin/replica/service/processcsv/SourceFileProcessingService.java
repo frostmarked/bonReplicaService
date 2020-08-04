@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
@@ -78,7 +79,7 @@ public class SourceFileProcessingService {
 // TODO impl CsvValidator.validateZipFile(CsvFile.JOURNAL.fileName(), CsvJournalColumns.values(), sfe.getZipFile());
 
 		if(!isRunAsync) {
-			processCsvFiles(sfe, isDryRun);
+			processCsvFiles(sfe, isDryRun);			
 		} else {
 			executor.execute(() -> {
 				StopWatch watch = new StopWatch();
@@ -97,7 +98,7 @@ public class SourceFileProcessingService {
 	
 	public void processCsvFiles(SourceFileEntity sfe, boolean isDryRun) throws IOException {
 		processCsvFile(sfe, CsvFile.ANCESTRY, (reader) -> { 
-			processAncestryCsvFile(reader, isDryRun);
+			processAncestryCsvFile(sfe, reader, isDryRun);
         });
 		processCsvFile(sfe, CsvFile.WEIGHT, (reader) -> { 
 			processWeightCsvFile(reader, isDryRun);
@@ -108,6 +109,11 @@ public class SourceFileProcessingService {
 			processJournalCsvFile(reader);
         });
         */
+		if(!isDryRun) {
+			sfe.setProcessed(Instant.now());
+			sfe.setOutcome("success"); // XXX catch and save failures as well?
+			sourceFileRepository.save(sfe);
+		}
 	}
 
 	public void processCsvFile(SourceFileEntity sfe, CsvFile csvFile, Consumer<CSVReader> processor)
@@ -122,7 +128,7 @@ public class SourceFileProcessingService {
 		}
 	}
 
-	public void processAncestryCsvFile(CSVReader csvReader, boolean isDryRun) {
+	public void processAncestryCsvFile(SourceFileEntity sfe, CSVReader csvReader, boolean isDryRun) {
 		BovineEntity be, currbe;
 		try {
 			csvReader.readNext(); // ignore header	
@@ -145,11 +151,13 @@ public class SourceFileProcessingService {
 				Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
 				if(opt.isPresent()) {																								
 					currbe = CsvAncestryRowToBovineEntityConverter.convert(cells, opt.get());					
+					currbe.setSourceFile(sfe);
 					log.debug("(row: {})(dryrun: {}) Update of existing bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
 					if(!isDryRun) {
 						bovineService.save(currbe);
 					}														
 				} else {
+					be.setSourceFile(sfe);
 					log.info("(row: {})(dryrun: {}) Create new bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
 					if(!isDryRun) {
 						bovineService.save(be);
