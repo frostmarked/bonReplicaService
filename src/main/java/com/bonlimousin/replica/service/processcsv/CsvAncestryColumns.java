@@ -11,7 +11,7 @@ public enum CsvAncestryColumns implements CsvColumns {
 	MATRI_ID("idonrm", 29, true),
 	PATRI_ID("idonrf", 39, true),
 	REGISTERED("daingang", 18),
-	UNREGISTERED("dautgang", 17),
+	UNREGISTERED("dautgang", 17, true),
 	;
 
 	private final String columnName;
