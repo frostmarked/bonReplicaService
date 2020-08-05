@@ -35,7 +35,7 @@ import com.bonlimousin.replica.web.rest.SourceFileResource;
 @SpringBootTest(classes = BonReplicaServiceApp.class)
 @AutoConfigureMockMvc
 @WithMockUser
-public class SourceFileResourceDoProcessIT {
+class SourceFileResourceDoProcessIT {
 
 	/* 
 	 * includes necessary csv files 
@@ -76,7 +76,7 @@ public class SourceFileResourceDoProcessIT {
 
 	@Test
 	@Transactional
-	public void dryRunSyncSourceFileProcess() throws Exception {
+	void dryRunSyncSourceFileProcess() throws Exception {
 		// Initialize the database
 		sourceFileEntity = sourceFileService.save(sourceFileEntity);
 
@@ -99,7 +99,7 @@ public class SourceFileResourceDoProcessIT {
 		
 	@Test
 	@Transactional
-	public void syncSourceFileProcess() throws Exception {
+	void syncSourceFileProcess() throws Exception {
 		// Initialize the database
 		sourceFileEntity = sourceFileService.save(sourceFileEntity);
 		Assert.assertNull(sourceFileEntity.getOutcome());

@@ -11,7 +11,6 @@ import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -76,43 +75,36 @@ public class SourceFileProcessingService {
 
 		CsvValidator.validateZipFile(CsvFile.ANCESTRY.fileName(), CsvAncestryColumns.values(), sfe.getZipFile());
 		CsvValidator.validateZipFile(CsvFile.WEIGHT.fileName(), CsvWeightColumns.values(), sfe.getZipFile());
-// TODO impl CsvValidator.validateZipFile(CsvFile.JOURNAL.fileName(), CsvJournalColumns.values(), sfe.getZipFile());
+		CsvValidator.validateZipFile(CsvFile.JOURNAL.fileName(), CsvJournalColumns.values(), sfe.getZipFile());
 
 		if(!isRunAsync) {
 			processCsvFiles(sfe, isDryRun);			
 		} else {
-			executor.execute(() -> {
-				StopWatch watch = new StopWatch();
-				watch.start();
+			executor.execute(() -> {				
 				try {				
 					processCsvFiles(sfe, isDryRun);					
 				} catch (Exception e) {
-					log.error("Processing of zip-file failed", e.getMessage(), e);
-				} finally {
-					watch.stop();
-					log.info("Processing time of zip-file was {}", watch.getTotalTimeMillis());
+					log.error("Processing of zip-file failed", e);
 				}
 			});
 		}
 	}
 	
 	public void processCsvFiles(SourceFileEntity sfe, boolean isDryRun) throws IOException {
-		processCsvFile(sfe, CsvFile.ANCESTRY, (reader) -> { 
-			processAncestryCsvFile(sfe, reader, isDryRun);
-        });
-		processCsvFile(sfe, CsvFile.WEIGHT, (reader) -> { 
-			processWeightCsvFile(reader, isDryRun);
-        });
-		// TODO impl
-		/*
-		processCsvFile(sfe, CsvFile.JOURNAL, (reader) -> { 
-			processJournalCsvFile(reader);
-        });
-        */
-		if(!isDryRun) {
-			sfe.setProcessed(Instant.now());
-			sfe.setOutcome("success"); // XXX catch and save failures as well?
-			sourceFileRepository.save(sfe);
+		StopWatch watch = new StopWatch();
+		watch.start();
+		try {
+			processCsvFile(sfe, CsvFile.ANCESTRY, reader -> processAncestryCsvFile(sfe, reader, isDryRun));
+			processCsvFile(sfe, CsvFile.WEIGHT, reader -> processWeightCsvFile(reader, isDryRun));			
+			processCsvFile(sfe, CsvFile.JOURNAL, reader -> processJournalCsvFile(reader, isDryRun));
+			if(!isDryRun) {
+				sfe.setProcessed(Instant.now());
+				sfe.setOutcome("success"); // XXX catch and save failures as well?
+				sourceFileRepository.save(sfe);
+			}
+		} finally {
+			watch.stop();
+			log.info("Processing time of zip-file was {}", watch.getTotalTimeMillis());
 		}
 	}
 
@@ -128,8 +120,7 @@ public class SourceFileProcessingService {
 		}
 	}
 
-	public void processAncestryCsvFile(SourceFileEntity sfe, CSVReader csvReader, boolean isDryRun) {
-		BovineEntity be, currbe;
+	public void processAncestryCsvFile(SourceFileEntity sfe, CSVReader csvReader, boolean isDryRun) {		
 		try {
 			csvReader.readNext(); // ignore header	
 			int rowCount = 0;
@@ -138,39 +129,41 @@ public class SourceFileProcessingService {
 					log.warn("Row {} seems empty. Only {} cells", rowCount, cells.length);
 					continue;
 				}
-				be = new BovineEntity();
-				be = CsvAncestryRowToBovineEntityConverter.convert(cells, be);
-				if(be.getEarTagId() == null) {
-					log.warn("(row: {}) Abort! Eartagid is missing for row", rowCount);
-					continue;
-				}
-				if(be.getHerdId() == null) {
-					log.warn("(row: {}) Abort! HerdId is missing for row", rowCount);
-					continue;
-				}				
-				Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
-				if(opt.isPresent()) {																								
-					currbe = CsvAncestryRowToBovineEntityConverter.convert(cells, opt.get());					
-					currbe.setSourceFile(sfe);
-					log.debug("(row: {})(dryrun: {}) Update of existing bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
-					if(!isDryRun) {
-						bovineService.save(currbe);
-					}														
-				} else {
-					be.setSourceFile(sfe);
-					log.info("(row: {})(dryrun: {}) Create new bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
-					if(!isDryRun) {
-						bovineService.save(be);
-					}
-				}
+				processAncestryCsvLine(sfe, isDryRun, cells, rowCount);
 			}
 		} catch (IOException e) {
-			log.error("Processing of ancestry-csv failed", e.getMessage(), e);
+			log.error("Processing of ancestry-csv failed", e);
 		}		
-	}	
+	}
 	
-	public void processWeightCsvFile(CSVReader csvReader, boolean isDryRun) {
-		BovineEntity be, currbe;
+	public void processAncestryCsvLine(SourceFileEntity sfe, boolean isDryRun, String[] cells, int rowCount) {		
+		BovineEntity be = CsvAncestryRowToBovineEntityConverter.convert(cells, new BovineEntity());
+		if(be.getEarTagId() == null) {
+			log.warn("(row: {}) Abort! Eartagid is missing for row", rowCount);
+			return;
+		}
+		if(be.getHerdId() == null) {
+			log.warn("(row: {}) Abort! HerdId is missing for row", rowCount);
+			return;
+		}				
+		Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
+		if(opt.isPresent()) {																								
+			BovineEntity currbe = CsvAncestryRowToBovineEntityConverter.convert(cells, opt.get());					
+			currbe.setSourceFile(sfe);
+			log.debug("(row: {})(dryrun: {}) Update of existing bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
+			if(!isDryRun) {
+				bovineService.save(currbe);
+			}														
+		} else {
+			be.setSourceFile(sfe);
+			log.info("(row: {})(dryrun: {}) Create new bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
+			if(!isDryRun) {
+				bovineService.save(be);
+			}
+		}
+	}
+	
+	public void processWeightCsvFile(CSVReader csvReader, boolean isDryRun) {		
 		try {
 			csvReader.readNext(); // ignore header
 			int rowCount = 0;			
@@ -179,34 +172,32 @@ public class SourceFileProcessingService {
 					log.warn("Row {} seems empty. Only {} cells", rowCount, cells.length);
 					continue;
 				}
-				be = new BovineEntity();
-				be = CsvWeightRowToBovineEntityConverter.convert(cells, be);
-				if(be.getEarTagId() == null) {
-					log.warn("(row: {}) Abort! Eartagid is missing for row", rowCount);
-					continue;
-				}
-				if(be.getHerdId() == null) {
-					log.warn("(row: {}) Abort! HerdId is missing for row", rowCount);
-					continue;
-				}				
-				Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
-				if(opt.isPresent()) {															
-					currbe = CsvWeightRowToBovineEntityConverter.convert(cells, opt.get());					
-					log.debug("(row: {})(dryrun: {}) Update of existing bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
-					if(!isDryRun) {
-						bovineService.save(currbe);
-					}					
-				} else {
-					log.info("(row: {})(dryrun: {}) No bovine with eartagid {} and herdid {} exists. Ignore weight until present.", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
-				}
+				processWeightCsvLine(isDryRun, cells, rowCount);
 			}
 		} catch (IOException e) {
-			log.error("Processing of weight-csv failed", e.getMessage(), e);
+			log.error("Processing of weight-csv failed", e);
+		}
+	}
+	
+	public void processWeightCsvLine(boolean isDryRun, String[] cells, int rowCount) {
+		BovineEntity be = CsvWeightRowToBovineEntityConverter.convert(cells, new BovineEntity());
+		if(be.getEarTagId() == null) {
+			log.warn("(row: {}) Abort! Eartagid is missing for row", rowCount);
+			return;
+		}				
+		Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
+		if(opt.isPresent()) {															
+			BovineEntity currbe = CsvWeightRowToBovineEntityConverter.convert(cells, opt.get());					
+			log.debug("(row: {})(dryrun: {}) Update of existing bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
+			if(!isDryRun) {
+				bovineService.save(currbe);
+			}					
+		} else {
+			log.info("(row: {})(dryrun: {}) No bovine with eartagid {} and herdid {} exists. Ignore weight until present.", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
 		}
 	}
 	
 	public void processJournalCsvFile(CSVReader csvReader, boolean isDryRun) {
-		// TODO
-		throw new NotImplementedException();
+		// TODO impl
 	}
 }

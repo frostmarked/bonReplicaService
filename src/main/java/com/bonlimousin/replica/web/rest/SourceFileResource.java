@@ -167,7 +167,6 @@ public class SourceFileResource {
     	try {
 			sourceFileProcessingService.process(id, isRunAsync, isDryRun);
 		} catch (IOException e) {
-			log.error("File parsing failed", e);
 			throw new ValidationException(e.getMessage());
 		}
         return ResponseEntity.noContent().headers(HeaderUtil.createAlert(applicationName, "Processing zip file", id.toString())).build();
