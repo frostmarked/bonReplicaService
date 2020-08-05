@@ -4,8 +4,8 @@ public enum CsvWeightColumns implements CsvColumns {
 	EAR_TAG_ID("idonr", 2),
 	MASTER_IDENTIFIER("idbonr", 5),
 	HERD_ID("idbes", 1),
-	COUNTRY_ID("idfor", 0),
-	GENDER("kdkoen", 3),
+	COUNTRY_ID("idfor", 0, true),
+	GENDER("kdkoen", 3, true),
 	WEIGHT("vivagn", 12),
 	TYPE("kdtillf", 13),
 	;

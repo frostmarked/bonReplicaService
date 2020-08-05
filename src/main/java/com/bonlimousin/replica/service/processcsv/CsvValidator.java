@@ -21,6 +21,10 @@ public class CsvValidator {
 
 	private static final Logger log = LoggerFactory.getLogger(CsvValidator.class);
 
+	private CsvValidator() {
+		
+	}
+	
 	public static void validateZipFile(String csvFileName, CsvColumns[] columns, byte[] zipBytes) throws IOException {
 		try (ByteArrayInputStream bais = new ByteArrayInputStream(zipBytes);
 				ZipInputStream zis = new ZipInputStream(bais)) {
@@ -57,7 +61,7 @@ public class CsvValidator {
 				throw new ValidationException("No records in csv " + fileName);
 			}
 			for (CsvColumns col : columns) {
-				if (col.nullableValue() == false && StringUtils.trimToNull(row[col.columnIndex()]) == null) {
+				if (!col.nullableValue() && StringUtils.trimToNull(row[col.columnIndex()]) == null) {
 					throw new ValidationException(fileName + " is missing column " + col.name());
 				}
 			}

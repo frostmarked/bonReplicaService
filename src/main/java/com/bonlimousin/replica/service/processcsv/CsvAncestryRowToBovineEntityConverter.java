@@ -12,6 +12,10 @@ import com.bonlimousin.replica.domain.enumeration.Gender;
 import com.bonlimousin.replica.domain.enumeration.HornStatus;
 
 public class CsvAncestryRowToBovineEntityConverter {
+	
+	private CsvAncestryRowToBovineEntityConverter() {
+		
+	}
 
 	public static BovineEntity convert(String[] cells, BovineEntity be) {		
 		String csvEarTagId = cells[CsvAncestryColumns.EAR_TAG_ID.columnIndex()];

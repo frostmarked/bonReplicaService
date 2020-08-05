@@ -14,7 +14,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
-@Profile({"dev", "prod"})
+@Profile({ "dev", "prod" })
 @Component
 @Aspect
 @Order(Ordered.LOWEST_PRECEDENCE)
@@ -30,7 +30,7 @@ public class EntityChangeJaversAspect {
 
 	@AfterReturning(pointcut = "execution(public * commit(..)) && this(org.javers.core.Javers)", returning = "commit")
 	public void onJaversCommitExecuted(JoinPoint pjp, Commit commit) {
-		if (commit.getSnapshots().size() > 0) {
+		if (!commit.getSnapshots().isEmpty()) {
 			broadcastEntityChange(commit);
 		}
 	}
@@ -41,13 +41,12 @@ public class EntityChangeJaversAspect {
 		String topic = "ENTITY_CHANGE_" + getManagedTypeSimpleName(snapshot).toUpperCase();
 		String key = vo.getAction();
 		ProducerRecord<String, EntityChangeVO> record = new ProducerRecord<>(topic, key, vo);
-		kafkaTemplate.send(record).addCallback(result -> {
-			log.debug("Sent entity-change-topic {} with key {} and changes to params {} with resulting offset {} ",
-					topic, key, vo.getChangedEntityFields(), result.getRecordMetadata().offset());
-		}, ex -> {
-			log.error("Failed to send entity-change-topic {} with key {} and changes to params {} due to {} ", topic,
-					key, vo.getChangedEntityFields(), ex.getMessage(), ex);
-		});
+		kafkaTemplate.send(record).addCallback(
+				result -> log.debug(
+						"Sent entity-change-topic {} with key {} and changes to params {} with resulting offset {} ",
+						topic, key, vo.getChangedEntityFields(), result.getRecordMetadata().offset()),
+				ex -> log.error("Failed to send entity-change-topic {} with key {} and changes to params {} due to {} ",
+						topic, key, vo.getChangedEntityFields(), ex.getMessage(), ex));
 	}
 
 	protected static String getManagedTypeSimpleName(CdoSnapshot snapshot) {

@@ -32,7 +32,7 @@ public class KafkaConfiguration {
 	@Bean
 	public ProducerFactory<String, EntityChangeVO> entityChangeProducerFactory() {
 		return new DefaultKafkaProducerFactory<>(kafkaProperties.getProducerProps(), null,
-				new JsonSerializer<EntityChangeVO>());
+				new JsonSerializer<>());
 	}
 
 	@Bean
