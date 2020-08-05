@@ -8,11 +8,13 @@ import org.javers.core.commit.Commit;
 import org.javers.core.metamodel.object.CdoSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
+@Profile({"dev", "prod"})
 @Component
 @Aspect
 @Order(Ordered.LOWEST_PRECEDENCE)
