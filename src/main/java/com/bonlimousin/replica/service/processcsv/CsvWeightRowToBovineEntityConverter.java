@@ -11,9 +11,8 @@ public class CsvWeightRowToBovineEntityConverter {
 		
 	}
 	
-	public static BovineEntity convert(String[] cells, BovineEntity be) {				
-		String csvEarTagId = cells[CsvWeightColumns.EAR_TAG_ID.columnIndex()];
-		be.setEarTagId(NumberUtils.createInteger(StringUtils.replace(csvEarTagId, ".0", "")));
+	public static BovineEntity convert(String[] cells, BovineEntity be) {						
+		be.setEarTagId(CsvRowToEntityConverterUtils.createId(cells, CsvWeightColumns.EAR_TAG_ID));
 		
 		String csvWeight = cells[CsvWeightColumns.WEIGHT.columnIndex()];
 		Integer weight = NumberUtils.createInteger(StringUtils.replace(csvWeight, ".0", ""));

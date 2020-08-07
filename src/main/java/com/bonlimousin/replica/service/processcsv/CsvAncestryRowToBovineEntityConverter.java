@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 
 import com.bonlimousin.replica.domain.BovineEntity;
 import com.bonlimousin.replica.domain.enumeration.BovineStatus;
@@ -17,9 +16,8 @@ public class CsvAncestryRowToBovineEntityConverter {
 		
 	}
 
-	public static BovineEntity convert(String[] cells, BovineEntity be) {		
-		String csvEarTagId = cells[CsvAncestryColumns.EAR_TAG_ID.columnIndex()];
-		be.setEarTagId(NumberUtils.createInteger(StringUtils.replace(csvEarTagId, ".0", "")));
+	public static BovineEntity convert(String[] cells, BovineEntity be) {				
+		be.setEarTagId(CsvRowToEntityConverterUtils.createId(cells, CsvAncestryColumns.EAR_TAG_ID));
 		
 		String csvMasterIdentifier = cells[CsvAncestryColumns.MASTER_IDENTIFIER.columnIndex()];
 		be.setMasterIdentifier(csvMasterIdentifier);
@@ -29,9 +27,8 @@ public class CsvAncestryRowToBovineEntityConverter {
 		
 		String csvCountry = cells[CsvAncestryColumns.COUNTRY_ID.columnIndex()];
 		be.setCountry(StringUtils.lowerCase(csvCountry));
-		
-		String csvHerdId = cells[CsvAncestryColumns.HERD_ID.columnIndex()];
-		be.setHerdId(NumberUtils.createInteger(StringUtils.trimToNull(StringUtils.replace(csvHerdId, ".0", ""))));
+				
+		be.setHerdId(CsvRowToEntityConverterUtils.createId(cells, CsvAncestryColumns.HERD_ID));
 		
 		String csvBirthDate = cells[CsvAncestryColumns.BIRTH_DATE.columnIndex()];
 		be.setBirthDate(LocalDate.parse(csvBirthDate).atStartOfDay(ZoneId.of("Europe/Stockholm")).toInstant());
@@ -39,15 +36,9 @@ public class CsvAncestryRowToBovineEntityConverter {
 		String csvGender = cells[CsvAncestryColumns.GENDER.columnIndex()];
 		be.setGender("2".equals(csvGender) ? Gender.HEIFER : Gender.BULL);
 				
-		String csvMatriId = cells[CsvAncestryColumns.MATRI_ID.columnIndex()];
-		Integer matriId = NumberUtils.createInteger(StringUtils.trimToNull(StringUtils.replace(csvMatriId, ".0", "")));
-		matriId = matriId != null ? matriId : 0; // unknown mothers seems to have zero anyway
-		be.setMatriId(matriId);
+		be.setMatriId(CsvRowToEntityConverterUtils.createId(cells, CsvAncestryColumns.MATRI_ID));
 		
-		String csvPatriId = cells[CsvAncestryColumns.PATRI_ID.columnIndex()];
-		Integer patriId = NumberUtils.createInteger(StringUtils.trimToNull(StringUtils.replace(csvPatriId, ".0", "")));
-		patriId = patriId != null ? patriId : 0; // unknown fathers seems to have zero anyway
-		be.setPatriId(patriId);
+		be.setPatriId(CsvRowToEntityConverterUtils.createId(cells, CsvAncestryColumns.PATRI_ID));
 		
 		be.setHornStatus(HornStatus.UNKNOWN); // TODO if exists
 		

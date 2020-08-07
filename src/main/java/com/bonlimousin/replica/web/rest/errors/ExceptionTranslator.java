@@ -21,6 +21,8 @@ import org.zalando.problem.violations.ConstraintViolationProblem;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.ValidationException;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -101,6 +103,17 @@ public class ExceptionTranslator implements ProblemHandling, SecurityAdviceTrait
         Problem problem = Problem.builder()
             .withStatus(Status.CONFLICT)
             .with(MESSAGE_KEY, ErrorConstants.ERR_CONCURRENCY_FAILURE)
+            .build();
+        return create(ex, problem, request);
+    }
+    
+    @ExceptionHandler
+    public ResponseEntity<Problem> handleValidationException(ValidationException ex, NativeWebRequest request) {    	
+        Problem problem = Problem.builder()
+            .withType(ErrorConstants.CONSTRAINT_VIOLATION_TYPE)
+            .withTitle("Argument not valid")
+            .withStatus(defaultConstraintViolationStatus())
+            .with(MESSAGE_KEY, ErrorConstants.ERR_VALIDATION)            
             .build();
         return create(ex, problem, request);
     }

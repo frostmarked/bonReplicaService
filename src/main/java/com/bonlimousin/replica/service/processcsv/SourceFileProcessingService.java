@@ -11,55 +11,44 @@ import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import javax.validation.ValidationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StopWatch;
 
 import com.bonlimousin.replica.domain.BovineEntity;
 import com.bonlimousin.replica.domain.SourceFileEntity;
 import com.bonlimousin.replica.repository.BovineRepository;
-import com.bonlimousin.replica.repository.SourceFileRepository;
 import com.bonlimousin.replica.service.BovineService;
+import com.bonlimousin.replica.service.SourceFileService;
 
 import liquibase.util.csv.CSVReader;
 
 /**
- * Service Implementation for managing {@link SourceFileEntity}.
+ * Service Implementation for managing import of CVS files with cow data
  */
 @Service
-@Transactional
 public class SourceFileProcessingService {
 
 	private final Logger log = LoggerFactory.getLogger(SourceFileProcessingService.class);
 
-	private final SourceFileRepository sourceFileRepository;
+	private final SourceFileService sourceFileService;
 	private final BovineRepository bovineRepository;
 	private final BovineService bovineService;
 
 	private final Executor executor;
 	
-	public SourceFileProcessingService(SourceFileRepository sourceFileRepository,
+	public SourceFileProcessingService(SourceFileService sourceFileService,
 			@Qualifier("taskExecutor") Executor executor,
 			BovineRepository bovineRepository,
 			BovineService bovineService) {
-		this.sourceFileRepository = sourceFileRepository;
+		this.sourceFileService = sourceFileService;
 		this.executor = executor;		
 		this.bovineRepository = bovineRepository;
 		this.bovineService = bovineService;
-	}
-
-	/**
-	 * Check existence of sourceFile by id.
-	 *
-	 * @param id the id of the entity.
-	 * @return answer.
-	 */
-	@Transactional(readOnly = true)
-	public boolean exists(Long id) {
-		return sourceFileRepository.existsById(id);
 	}
 
 	/**
@@ -69,10 +58,13 @@ public class SourceFileProcessingService {
 	 * @return the entity.
 	 * @throws IOException
 	 */
-	@Transactional
 	public void process(Long id, boolean isRunAsync, boolean isDryRun) throws IOException {
-		SourceFileEntity sfe = sourceFileRepository.getOne(id);
-
+		Optional<SourceFileEntity> opt = sourceFileService.findOne(id);
+		if(opt.isEmpty()) {
+			throw new ValidationException("Entity not found");
+		}
+		SourceFileEntity sfe = opt.get();
+		
 		CsvValidator.validateZipFile(CsvFile.ANCESTRY.fileName(), CsvAncestryColumns.values(), sfe.getZipFile());
 		CsvValidator.validateZipFile(CsvFile.WEIGHT.fileName(), CsvWeightColumns.values(), sfe.getZipFile());
 		CsvValidator.validateZipFile(CsvFile.JOURNAL.fileName(), CsvJournalColumns.values(), sfe.getZipFile());
@@ -94,110 +86,83 @@ public class SourceFileProcessingService {
 		StopWatch watch = new StopWatch();
 		watch.start();
 		try {
-			processCsvFile(sfe, CsvFile.ANCESTRY, reader -> processAncestryCsvFile(sfe, reader, isDryRun));
-			processCsvFile(sfe, CsvFile.WEIGHT, reader -> processWeightCsvFile(reader, isDryRun));			
-			processCsvFile(sfe, CsvFile.JOURNAL, reader -> processJournalCsvFile(reader, isDryRun));
-			if(!isDryRun) {
-				sfe.setProcessed(Instant.now());
-				sfe.setOutcome("success"); // XXX catch and save failures as well?
-				sourceFileRepository.save(sfe);
-			}
+			processCsvFile(sfe, CsvFile.ANCESTRY, cells -> processAncestryCsvLine(sfe, isDryRun, cells));
+			processCsvFile(sfe, CsvFile.WEIGHT, cells -> processWeightCsvLine(isDryRun, cells));			
+			processCsvFile(sfe, CsvFile.JOURNAL, cells -> processJournalCsvLine(isDryRun, cells));
+			String outcome = isDryRun ? "dryrun_success" : "success";
+			storeOutcome(sfe, outcome);			
+		} catch(Exception e) {
+			String outcome = isDryRun ? "dryrun_failure" : "failure";
+			storeOutcome(sfe, outcome);
+			throw e;
 		} finally {
 			watch.stop();
 			log.info("Processing time of zip-file was {}", watch.getTotalTimeMillis());
 		}
 	}
+	
+	private void storeOutcome(SourceFileEntity sfe, String outcome) {
+		sfe.setProcessed(Instant.now());
+		sfe.setOutcome(outcome);
+		sourceFileService.save(sfe);
+	}
 
-	public void processCsvFile(SourceFileEntity sfe, CsvFile csvFile, Consumer<CSVReader> processor)
+	private void processCsvFile(SourceFileEntity sfe, CsvFile csvFile, Consumer<String[]> processor)
 			throws IOException {
 		try (ByteArrayInputStream bais = new ByteArrayInputStream(sfe.getZipFile());
 				ZipInputStream zis = new ZipInputStream(bais)) {
 			for (ZipEntry ze; (ze = zis.getNextEntry()) != null;) {
-				if (csvFile.fileName().equals(ze.getName())) {
-					processor.accept(new CSVReader(new InputStreamReader(zis, StandardCharsets.UTF_8)));											
+				if (csvFile.fileName().equals(ze.getName())) {					
+					try (CSVReader csvReader = new CSVReader(new InputStreamReader(zis, StandardCharsets.UTF_8))) {					
+						csvReader.readNext(); // ignore header	
+						int rowCount = 0;
+						for(String[] cells; (cells = csvReader.readNext()) != null; rowCount++) {
+							log.debug("Process row {} of file {}", rowCount, csvFile);
+							processor.accept(cells);
+						}
+						return;
+					} catch (IOException e) {
+						log.error("Processing of csv-file failed", e);
+					}
 				}
 			}
 		}
 	}
 
-	public void processAncestryCsvFile(SourceFileEntity sfe, CSVReader csvReader, boolean isDryRun) {		
-		try {
-			csvReader.readNext(); // ignore header	
-			int rowCount = 0;
-			for(String[] cells; (cells = csvReader.readNext()) != null; rowCount++) {
-				if(cells.length <= CsvAncestryColumns.NAME.columnIndex()) {
-					log.warn("Row {} seems empty. Only {} cells", rowCount, cells.length);
-					continue;
-				}
-				processAncestryCsvLine(sfe, isDryRun, cells, rowCount);
-			}
-		} catch (IOException e) {
-			log.error("Processing of ancestry-csv failed", e);
-		}		
-	}
-	
-	public void processAncestryCsvLine(SourceFileEntity sfe, boolean isDryRun, String[] cells, int rowCount) {		
-		BovineEntity be = CsvAncestryRowToBovineEntityConverter.convert(cells, new BovineEntity());
-		if(be.getEarTagId() == null) {
-			log.warn("(row: {}) Abort! Eartagid is missing for row", rowCount);
-			return;
-		}
-		if(be.getHerdId() == null) {
-			log.warn("(row: {}) Abort! HerdId is missing for row", rowCount);
-			return;
-		}				
+	public void processAncestryCsvLine(SourceFileEntity sfe, boolean isDryRun, String[] cells) {		
+		BovineEntity be = CsvAncestryRowToBovineEntityConverter.convert(cells, new BovineEntity());		
 		Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
 		if(opt.isPresent()) {																								
 			BovineEntity currbe = CsvAncestryRowToBovineEntityConverter.convert(cells, opt.get());					
 			currbe.setSourceFile(sfe);
-			log.debug("(row: {})(dryrun: {}) Update of existing bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
+			log.info("Update of existing bovine with eartagid {} and herdid {}", be.getEarTagId(), be.getHerdId());
 			if(!isDryRun) {
 				bovineService.save(currbe);
 			}														
 		} else {
 			be.setSourceFile(sfe);
-			log.info("(row: {})(dryrun: {}) Create new bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
+			log.info("Create new bovine with eartagid {} and herdid {}", be.getEarTagId(), be.getHerdId());
 			if(!isDryRun) {
 				bovineService.save(be);
 			}
 		}
 	}
 	
-	public void processWeightCsvFile(CSVReader csvReader, boolean isDryRun) {		
-		try {
-			csvReader.readNext(); // ignore header
-			int rowCount = 0;			
-			for(String[] cells; (cells = csvReader.readNext()) != null; rowCount++) {
-				if(cells.length <= CsvWeightColumns.TYPE.columnIndex()) {
-					log.warn("Row {} seems empty. Only {} cells", rowCount, cells.length);
-					continue;
-				}
-				processWeightCsvLine(isDryRun, cells, rowCount);
-			}
-		} catch (IOException e) {
-			log.error("Processing of weight-csv failed", e);
-		}
-	}
-	
-	public void processWeightCsvLine(boolean isDryRun, String[] cells, int rowCount) {
-		BovineEntity be = CsvWeightRowToBovineEntityConverter.convert(cells, new BovineEntity());
-		if(be.getEarTagId() == null) {
-			log.warn("(row: {}) Abort! Eartagid is missing for row", rowCount);
-			return;
-		}				
+	public void processWeightCsvLine(boolean isDryRun, String[] cells) {
+		BovineEntity be = CsvWeightRowToBovineEntityConverter.convert(cells, new BovineEntity());						
 		Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
 		if(opt.isPresent()) {															
 			BovineEntity currbe = CsvWeightRowToBovineEntityConverter.convert(cells, opt.get());					
-			log.debug("(row: {})(dryrun: {}) Update of existing bovine with eartagid {} and herdid {}", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
+			log.info("Update of existing bovine with eartagid {} and herdid {}", be.getEarTagId(), be.getHerdId());
 			if(!isDryRun) {
 				bovineService.save(currbe);
 			}					
 		} else {
-			log.info("(row: {})(dryrun: {}) No bovine with eartagid {} and herdid {} exists. Ignore weight until present.", rowCount, isDryRun, be.getEarTagId(), be.getHerdId());
+			log.info("No bovine with eartagid {} and herdid {} exists. Ignore weight until present.", be.getEarTagId(), be.getHerdId());
 		}
 	}
 	
-	public void processJournalCsvFile(CSVReader csvReader, boolean isDryRun) {
+	public void processJournalCsvLine(boolean isDryRun, String[] cells) {
 		// TODO impl
 	}
 }
