@@ -62,6 +62,11 @@ public class SourceFileService {
         log.debug("Request to get SourceFile : {}", id);
         return sourceFileRepository.findById(id);
     }
+    
+    @Transactional(readOnly = true)
+    public boolean exists(Long id) {
+		return sourceFileRepository.existsById(id);
+	}
 
     /**
      * Delete the sourceFile by id.

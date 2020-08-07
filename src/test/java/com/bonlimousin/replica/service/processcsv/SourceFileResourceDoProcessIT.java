@@ -1,5 +1,7 @@
 package com.bonlimousin.replica.service.processcsv;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -7,10 +9,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -46,7 +48,9 @@ class SourceFileResourceDoProcessIT {
 	 * content is reduced to 2916 and her mother 2713 and father 2688
 	 */
 	private static final String TEST_ZIP_FILE = "src/test/resources/fixtures/csv_se015112_truncated.zip";
-
+	
+	private static final String TEST_ZIP_FILE_UPDATED_NAME = "src/test/resources/fixtures/csv_se015112_upd_harst_name.zip";
+	
 	@Autowired
 	private SourceFileService sourceFileService;
 	
@@ -58,8 +62,8 @@ class SourceFileResourceDoProcessIT {
 
 	private SourceFileEntity sourceFileEntity;
 
-	public static SourceFileEntity createEntity() throws FileNotFoundException, IOException {
-		byte[] zipBytes = IOUtils.toByteArray(new FileInputStream(TEST_ZIP_FILE));
+	public static SourceFileEntity createEntity(String fileName) throws FileNotFoundException, IOException {
+		byte[] zipBytes = IOUtils.toByteArray(new FileInputStream(fileName));
 		SourceFileEntity sourceFileEntity = new SourceFileEntity()
 				.name("test.zip")
 				.zipFile(zipBytes)
@@ -68,15 +72,21 @@ class SourceFileResourceDoProcessIT {
 				.outcome(null);		
 		return sourceFileEntity;
 	}
-
-	@BeforeEach
-	public void initTest() throws FileNotFoundException, IOException {
-		sourceFileEntity = createEntity();
+	
+	@Test
+	void missingSourceFile() throws Exception {		
+		restSourceFileMockMvc.perform(
+				post("/api/source-files/{id}/process", Integer.MAX_VALUE)
+				.param("isRunAsync", "false")
+				.param("isDryRun", "true")
+				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().is4xxClientError());		
 	}
 
 	@Test
 	@Transactional
 	void dryRunSyncSourceFileProcess() throws Exception {
+		sourceFileEntity = createEntity(TEST_ZIP_FILE);
 		// Initialize the database
 		sourceFileEntity = sourceFileService.save(sourceFileEntity);
 
@@ -90,8 +100,8 @@ class SourceFileResourceDoProcessIT {
 		
 		Optional<SourceFileEntity> sfeOpt = sourceFileService.findOne(sourceFileEntity.getId());
 		Assert.assertTrue(sfeOpt.isPresent());
-		Assert.assertNull(sfeOpt.get().getOutcome());
-		Assert.assertNull(sfeOpt.get().getProcessed());
+		Assert.assertNotNull(sfeOpt.get().getOutcome());
+		Assert.assertNotNull(sfeOpt.get().getProcessed());
 		
 		Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(2916);
 		Assert.assertFalse(opt.isPresent());
@@ -100,7 +110,7 @@ class SourceFileResourceDoProcessIT {
 	@Test
 	@Transactional
 	void syncSourceFileProcess() throws Exception {
-		// Initialize the database
+		sourceFileEntity = createEntity(TEST_ZIP_FILE);
 		sourceFileEntity = sourceFileService.save(sourceFileEntity);
 		Assert.assertNull(sourceFileEntity.getOutcome());
 		Assert.assertNull(sourceFileEntity.getProcessed());
@@ -137,5 +147,63 @@ class SourceFileResourceDoProcessIT {
 		Assert.assertEquals("test.zip", bovine2916.getSourceFile().getName());
 		// not impl, yet
 		Assert.assertEquals(0, bovine2916.getJournalEntries().size());
+	}
+	
+	@Test	
+	void sourceFileProcess() throws Exception {
+		SourceFileEntity sfe = createEntity(TEST_ZIP_FILE);
+		sfe = sourceFileService.save(sfe);
+		Assert.assertNull(sfe.getOutcome());
+		Assert.assertNull(sfe.getProcessed());
+		
+		// Process the sourceFile
+		restSourceFileMockMvc.perform(
+				post("/api/source-files/{id}/process", sfe.getId())
+				.param("isRunAsync", "false")
+				.param("isDryRun", "false")
+				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isNoContent());
+		Optional<SourceFileEntity> sfeOpt = sourceFileService.findOne(sfe.getId());
+		Assert.assertTrue(sfeOpt.isPresent());
+		Assert.assertNotNull(sfeOpt.get().getOutcome());
+		Assert.assertNotNull(sfeOpt.get().getProcessed());
+		
+		sourceFileEntity = createEntity(TEST_ZIP_FILE_UPDATED_NAME);
+		sourceFileEntity = sourceFileService.save(sourceFileEntity);
+		Assert.assertNull(sourceFileEntity.getOutcome());
+		Assert.assertNull(sourceFileEntity.getProcessed());
+		
+		Optional<BovineEntity> optOrg = bovineRepository.findOneByEarTagId(2916);
+		Assert.assertTrue(optOrg.isPresent());		
+		Assert.assertThat(optOrg.get().getName(), not(containsString("TEST")));
+		
+		restSourceFileMockMvc.perform(
+				post("/api/source-files/{id}/process", sourceFileEntity.getId())
+				.param("isRunAsync", "true")
+				.param("isDryRun", "false")
+				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isNoContent());
+			
+		Optional<SourceFileEntity> sfeUpdOpt = null;
+		for(int i=1; i<10; i++) {
+			TimeUnit.SECONDS.sleep(i);
+			sfeUpdOpt = sourceFileService.findOne(sourceFileEntity.getId());
+			if(sfeUpdOpt.isPresent() && sfeUpdOpt.get().getProcessed() != null) {
+				break;
+			}
+		}
+		if(sfeUpdOpt.isEmpty() || sfeUpdOpt.get().getProcessed() == null) {
+			Assert.fail("Could not find update of bovine name");
+		}
+		
+		Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(2916);
+		Assert.assertTrue(opt.isPresent());
+		
+		BovineEntity be = opt.get();		
+		Assert.assertThat(be.getName(), containsString("TEST"));
+		
+		bovineRepository.deleteAll();
+		sourceFileService.delete(sfe.getId());
+		sourceFileService.delete(sourceFileEntity.getId());		
 	}
 }

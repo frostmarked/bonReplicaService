@@ -57,12 +57,17 @@ public class CsvValidator {
 			}
 
 			String[] row = csvReader.readNext();
-			if (row == null) {
+			if (row == null || row.length == 0) {
 				throw new ValidationException("No records in csv " + fileName);
 			}
 			for (CsvColumns col : columns) {
+				if (row.length <= col.columnIndex()) {
+					String msg = MessageFormat.format("First row for {0} has fewer columns ({1}) then given index ({2}) for column {3}", fileName, row.length, col.columnIndex(), col.name());
+					throw new ValidationException(msg);
+				}
 				if (!col.nullableValue() && StringUtils.trimToNull(row[col.columnIndex()]) == null) {
-					throw new ValidationException(fileName + " is missing column " + col.name());
+					String msg = MessageFormat.format("First row for {0} is missing column {1}", fileName, col.name());
+					throw new ValidationException(msg);					
 				}
 			}
 		}
