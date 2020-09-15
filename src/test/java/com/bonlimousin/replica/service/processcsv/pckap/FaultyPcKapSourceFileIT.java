@@ -1,4 +1,4 @@
-package com.bonlimousin.replica.service.processcsv;
+package com.bonlimousin.replica.service.processcsv.pckap;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -17,15 +17,16 @@ import org.springframework.transaction.annotation.Transactional;
 import com.bonlimousin.replica.BonReplicaServiceApp;
 import com.bonlimousin.replica.domain.SourceFileEntity;
 import com.bonlimousin.replica.service.SourceFileService;
+import com.bonlimousin.replica.service.processcsv.SourceFileProcessingService;
 
 @SpringBootTest(classes = BonReplicaServiceApp.class)
-public class SourceFileProcessingServiceIT {
+class FaultyPcKapSourceFileIT {
 
-	private static final String TEST_ZIP_FILE_BROKEN_HEADER = "src/test/resources/fixtures/csv_se015112_broken_header.zip";
-	private static final String TEST_ZIP_FILE_EMPTY_LINES = "src/test/resources/fixtures/csv_se015112_empty_lines.zip";
-	private static final String TEST_ZIP_FILE_MISSING_LINES = "src/test/resources/fixtures/csv_se015112_missing_lines.zip";
-	private static final String TEST_ZIP_FILE_MISSING_ID_FIRST = "src/test/resources/fixtures/csv_se015112_missing_id_first.zip";
-	private static final String TEST_ZIP_FILE_MISSING_ID_SECOND = "src/test/resources/fixtures/csv_se015112_missing_id_second.zip";
+	private static final String TEST_ZIP_FILE_BROKEN_HEADER = "src/test/resources/fixtures/pckap/csv_se015112_broken_header.zip";
+	private static final String TEST_ZIP_FILE_EMPTY_LINES = "src/test/resources/fixtures/pckap/csv_se015112_empty_lines.zip";
+	private static final String TEST_ZIP_FILE_MISSING_LINES = "src/test/resources/fixtures/pckap/csv_se015112_missing_lines.zip";
+	private static final String TEST_ZIP_FILE_MISSING_ID_FIRST = "src/test/resources/fixtures/pckap/csv_se015112_missing_id_first.zip";
+	private static final String TEST_ZIP_FILE_MISSING_ID_SECOND = "src/test/resources/fixtures/pckap/csv_se015112_missing_id_second.zip";
 
 	@Autowired
 	private SourceFileService sourceFileService;

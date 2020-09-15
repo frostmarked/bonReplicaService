@@ -1,4 +1,6 @@
-package com.bonlimousin.replica.service.processcsv;
+package com.bonlimousin.replica.service.processcsv.pckap;
+
+import com.bonlimousin.replica.service.processcsv.CsvColumns;
 
 public enum CsvJournalColumns implements CsvColumns {
 	EAR_TAG_ID("idonr", 8),

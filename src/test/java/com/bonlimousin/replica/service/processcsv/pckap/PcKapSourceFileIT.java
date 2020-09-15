@@ -1,4 +1,4 @@
-package com.bonlimousin.replica.service.processcsv;
+package com.bonlimousin.replica.service.processcsv.pckap;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.not;
@@ -37,7 +37,7 @@ import com.bonlimousin.replica.web.rest.SourceFileResource;
 @SpringBootTest(classes = BonReplicaServiceApp.class)
 @AutoConfigureMockMvc
 @WithMockUser
-class SourceFileResourceDoProcessIT {
+class PcKapSourceFileIT {
 
 	/* 
 	 * includes necessary csv files 
@@ -47,9 +47,9 @@ class SourceFileResourceDoProcessIT {
 	 * 
 	 * content is reduced to 2916 and her mother 2713 and father 2688
 	 */
-	private static final String TEST_ZIP_FILE = "src/test/resources/fixtures/csv_se015112_truncated.zip";
+	private static final String TEST_ZIP_FILE = "src/test/resources/fixtures/pckap/csv_se015112_truncated.zip";
 	
-	private static final String TEST_ZIP_FILE_UPDATED_NAME = "src/test/resources/fixtures/csv_se015112_upd_harst_name.zip";
+	private static final String TEST_ZIP_FILE_UPDATED_NAME = "src/test/resources/fixtures/pckap/csv_se015112_upd_harst_name.zip";
 	
 	@Autowired
 	private SourceFileService sourceFileService;
