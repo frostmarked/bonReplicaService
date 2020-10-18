@@ -14,12 +14,8 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -34,6 +30,7 @@ import com.bonlimousin.replica.domain.enumeration.Gender;
 import com.bonlimousin.replica.domain.enumeration.HornStatus;
 import com.bonlimousin.replica.service.BovineService;
 
+@Disabled("some issue with docker desktop for macos and test-containers")
 @ActiveProfiles("emitentitychanges")
 @SpringBootTest(classes = { BonReplicaServiceApp.class, KafkaTestConfiguration.class })
 @TestMethodOrder(OrderAnnotation.class)
@@ -49,7 +46,7 @@ class EntityChangeJaversAspectIT {
 	public static void setup() {
 		KafkaTestConfiguration.startKafka();
 	}
-	
+
 	public static BovineEntity createEntity() {
 		BovineEntity bovineEntity = new BovineEntity()
 				.earTagId(2000)
@@ -73,13 +70,13 @@ class EntityChangeJaversAspectIT {
 	@Order(1)
 	@Transactional
 	void testBonvineEntityChange() {
-		BovineEntity be = bovineService.save(createEntity());				
-		ConsumerRecords<String, EntityChangeVO> records = consumeChanges();				
+		BovineEntity be = bovineService.save(createEntity());
+		ConsumerRecords<String, EntityChangeVO> records = consumeChanges();
 		assertThat(records.count()).isEqualTo(1);
 		ConsumerRecord<String, EntityChangeVO> record = records.iterator().next();
 		assertEquals("CREATE", record.key());
 		assertThat(record.value().getEntityId()).isEqualTo(be.getId().toString());
-		
+
 		assertThat(record.value().getEntityValue())
 			.containsEntry("earTagId", be.getEarTagId())
 			.containsEntry("masterIdentifier", be.getMasterIdentifier())
@@ -96,20 +93,20 @@ class EntityChangeJaversAspectIT {
 			.containsEntry("weight200", be.getWeight200())
 			.containsEntry("weight365", be.getWeight365())
 			;
-		
-		List<String> fields = Arrays.asList("earTagId", 
+
+		List<String> fields = Arrays.asList("earTagId",
 				"masterIdentifier", "country", "herdId", "birthDate", "gender", "name", "bovineStatus",
 				"hornStatus", "matriId", "patriId", "weight0", "weight200", "weight365");
-		assertThat(record.value().getChangedEntityFields()).containsAll(fields);		
+		assertThat(record.value().getChangedEntityFields()).containsAll(fields);
 	}
-	
+
 	@Test
 	@Order(2)
 	@Transactional
 	void testBonvineEntityChangeUpdate() {
-		BovineEntity be = bovineService.save(createEntity());		
-		BovineEntity beUpd = bovineService.save(be.name("TEST"));				
-		ConsumerRecords<String, EntityChangeVO> records = consumeChanges();		
+		BovineEntity be = bovineService.save(createEntity());
+		BovineEntity beUpd = bovineService.save(be.name("TEST"));
+		ConsumerRecords<String, EntityChangeVO> records = consumeChanges();
 		assertThat(records.count()).isEqualTo(2);
 		Iterator<ConsumerRecord<String, EntityChangeVO>> it = records.iterator();
 		ConsumerRecord<String, EntityChangeVO> recordCreate = it.next();
@@ -117,7 +114,7 @@ class EntityChangeJaversAspectIT {
 		ConsumerRecord<String, EntityChangeVO> record = it.next();
 		assertEquals("UPDATE", record.key());
 		assertThat(record.value().getEntityId()).isEqualTo(be.getId().toString());
-		
+
 		assertThat(record.value().getEntityValue())
 			.containsEntry("earTagId", be.getEarTagId())
 			.containsEntry("masterIdentifier", be.getMasterIdentifier())
@@ -134,13 +131,13 @@ class EntityChangeJaversAspectIT {
 			.containsEntry("weight200", be.getWeight200())
 			.containsEntry("weight365", be.getWeight365())
 			;
-		
+
 		List<String> fields = Arrays.asList("name");
-		assertThat(record.value().getChangedEntityFields()).containsAll(fields);		
+		assertThat(record.value().getChangedEntityFields()).containsAll(fields);
 	}
-	
+
 	private ConsumerRecords<String, EntityChangeVO> consumeChanges() {
-		Consumer<String, EntityChangeVO> consumer = entityChangeConsumerFactory.createConsumer();		
+		Consumer<String, EntityChangeVO> consumer = entityChangeConsumerFactory.createConsumer();
 		consumer.subscribe(Collections.singletonList("ENTITY_CHANGE_BOVINEENTITY"));
 		ConsumerRecords<String, EntityChangeVO> records = consumer.poll(Duration.ofSeconds(2));
 		consumer.commitSync();
@@ -148,7 +145,7 @@ class EntityChangeJaversAspectIT {
 		consumer.close();
 		return records;
 	}
-	
+
 	@AfterAll
 	public static void tearDown() {
 		KafkaTestConfiguration.stopKafka();

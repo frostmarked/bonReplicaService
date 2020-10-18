@@ -1,19 +1,5 @@
 package com.bonlimousin.replica.service.processcsv.vxa;
 
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
 import com.bonlimousin.replica.domain.BovineEntity;
 import com.bonlimousin.replica.domain.SourceFileEntity;
 import com.bonlimousin.replica.domain.enumeration.BovineStatus;
@@ -21,65 +7,62 @@ import com.bonlimousin.replica.domain.enumeration.Gender;
 import com.bonlimousin.replica.domain.enumeration.HornStatus;
 import com.bonlimousin.replica.repository.BovineRepository;
 import com.bonlimousin.replica.service.BovineService;
+import com.bonlimousin.replica.service.processcsv.AbstractAncestryCsvProcessingService;
 import com.bonlimousin.replica.service.processcsv.CsvFileConfig;
-import com.bonlimousin.replica.service.processcsv.CsvProcessingService;
 import com.bonlimousin.replica.service.processcsv.CsvProcessingUtils;
-
 import liquibase.util.csv.CSVReader;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.AbstractMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
-public class VxaAncestryCsvProcessingService implements CsvProcessingService {
+public class VxaAncestryCsvProcessingService extends AbstractAncestryCsvProcessingService {
 
-	private static final Logger log = LoggerFactory.getLogger(VxaAncestryCsvProcessingService.class);	
-	
+	private static final Logger log = LoggerFactory.getLogger(VxaAncestryCsvProcessingService.class);
 	private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyyMMdd");
-	
-	private final BovineRepository bovineRepository;
-	private final BovineService bovineService;
-	
+
 	private final Map<Integer, Integer> internalIdEarTagIdMap;
 
 	public VxaAncestryCsvProcessingService(BovineRepository bovineRepository,
-			BovineService bovineService) {		
-		this.bovineRepository = bovineRepository;
-		this.bovineService = bovineService;
-		
+			BovineService bovineService) {
+	    super(bovineRepository, bovineService, CsvFileConfig.VXA_ANCESTRY, VxaAncestryCsvColumns.values());
 		this.internalIdEarTagIdMap = new HashMap<>();
 	}
-	
-	@Override
-	public CsvFileConfig getCsvFileConfig() {
-		return CsvFileConfig.VXA_ANCESTRY;
-	}
-	
-	@Override
-	public void processCsvFile(SourceFileEntity sfe, boolean isDryRun, CSVReader csvReader) throws IOException {
-		csvReader.readNext(); // ignore header	
-		int rowCount = 0;
-		for(String[] cells; (cells = csvReader.readNext()) != null; rowCount++) {
-			log.debug("Process row {} of file {}", rowCount, sfe.getName());
-			
-			extractInternalIdEarTagIdMapEntry(cells)
-				.ifPresent(ent -> internalIdEarTagIdMap.put(ent.getKey(), ent.getValue()));
-			BovineEntity be = populateBovineEntity(cells, new BovineEntity());		
-			Optional<BovineEntity> opt = bovineRepository.findOneByEarTagId(be.getEarTagId());
-			if(opt.isPresent()) {																								
-				BovineEntity currbe = populateBovineEntity(cells, opt.get());					
-				currbe.setSourceFile(sfe);
-				log.info("Update of existing bovine with eartagid {} and herdid {}", be.getEarTagId(), be.getHerdId());
-				if(!isDryRun) {
-					bovineService.save(currbe);
-				}														
-			} else {
-				be.setSourceFile(sfe);
-				log.info("Create new bovine with eartagid {} and herdid {}", be.getEarTagId(), be.getHerdId());
-				if(!isDryRun) {
-					bovineService.save(be);
-				}
-			}
-		}
-	}
-	
+
+	public void addInternalIdEarTagIdMapping(int internalId, int earTagId) {
+        this.internalIdEarTagIdMap.put(internalId, earTagId);
+    }
+
+    public Optional<Integer> getEarTagIdFromMapping(int internalId) {
+        return Optional.ofNullable(this.internalIdEarTagIdMap.get(internalId));
+    }
+
+    @Override
+    public int processCsvFile(SourceFileEntity sfe, boolean isDryRun, CSVReader csvReader) throws IOException {
+	    this.internalIdEarTagIdMap.clear();
+        return super.processCsvFile(sfe, isDryRun, csvReader);
+    }
+
+    @Override
+    public boolean processCsvRow(SourceFileEntity sfe, boolean isDryRun, String[] cells) {
+        extractInternalIdEarTagIdMapEntry(cells)
+            .ifPresent(ent -> this.addInternalIdEarTagIdMapping(ent.getKey(), ent.getValue()));
+        return super.processCsvRow(sfe, isDryRun, cells);
+    }
+
+    @Override
 	public BovineEntity populateBovineEntity(String[] cells, BovineEntity be) {
 		CsvProcessingUtils.createId(cells, VxaAncestryCsvColumns.EAR_TAG_ID).ifPresent(be::setEarTagId);
 
@@ -88,88 +71,101 @@ public class VxaAncestryCsvProcessingService implements CsvProcessingService {
 
 		String[] midParts = csvMasterIdentifier.split("-");
 
-		String csvCountry = midParts.length == 4 ? midParts[0] : "";
+		String csvCountry = midParts.length == 4 ? midParts[0] : "??";
 		be.setCountry(StringUtils.lowerCase(csvCountry));
 
-		int herdId = Integer.parseInt(midParts[1]);
-		be.setHerdId(herdId);
+		if(midParts.length > 1 && NumberUtils.isParsable(midParts[1])) {
+            be.setHerdId(Integer.parseInt(midParts[1]));
+        } else {
+		    log.warn("EarTagId {} is missing herdId in masterid{}", be.getEarTagId(), csvMasterIdentifier);
+            be.setHerdId(0);
+        }
 
 		String csvName = cells[VxaAncestryCsvColumns.NAME.columnIndex()];
 		be.setName(csvName);
 
 		String csvBirthDate = cells[VxaAncestryCsvColumns.BIRTH_DATE.columnIndex()];
-		be.setBirthDate(LocalDate.parse(csvBirthDate, DTF).atStartOfDay(ZoneId.of("Europe/Stockholm")).toInstant());
+        try {
+            be.setBirthDate(LocalDate.parse(csvBirthDate, DTF).atStartOfDay(ZoneId.of("Europe/Stockholm")).toInstant());
+        } catch (Exception e) {
+            log.warn("EarTagId {} has faulty birthdate {}", be.getEarTagId(), csvBirthDate);
+            be.setBirthDate(Instant.MIN);
+        }
 
-		String csvGender = cells[VxaAncestryCsvColumns.GENDER.columnIndex()];
+        String csvGender = cells[VxaAncestryCsvColumns.GENDER.columnIndex()];
 		be.setGender("2".equals(csvGender) ? Gender.HEIFER : Gender.BULL);
 
-		String csvHornStatus = cells[VxaAncestryCsvColumns.HORN_STATUS.columnIndex()];
-		HornStatus hornStatus;
-		switch (csvHornStatus) {
-		case "P":
-			hornStatus = HornStatus.POLLED;
-			break;
-		case "H":
-			hornStatus = HornStatus.HORNED;
-			break;
-		case "D":
-			hornStatus = HornStatus.DEHORNED;
-			break;
-		case "S":
-			hornStatus = HornStatus.SCURS;
-			break;
-		default:
-			hornStatus = HornStatus.UNKNOWN;
-			break;
-		}
-		be.setHornStatus(hornStatus);
+        String csvHornStatus = cells[VxaAncestryCsvColumns.HORN_STATUS.columnIndex()];
+		be.setHornStatus(extractHornStatus(csvHornStatus));
 
-		BovineStatus bovineStatus;
-		String csvStatus = StringUtils.trimToEmpty(cells[VxaAncestryCsvColumns.STATUS.columnIndex()]);
-		if (!csvStatus.isEmpty()) {
-			switch (csvHornStatus) {
-			case "SÅLD LIV":
-				bovineStatus = BovineStatus.SOLD;
-				break;
-			case "SLAKT/SLAKTDJUR":
-				bovineStatus = BovineStatus.MEAT;
-				break;
-			case "UTGÅNGEN":
-			case "FÖRLOSSN.SVÅR":
-			case "OLYCKSFALL":
-			case "ANNAN SJUKDOM":
-			default:
-				bovineStatus = BovineStatus.UNKNOWN;
-				break;
-			}
-		} else {
-			bovineStatus = BovineStatus.ON_FARM;
-		}
-		be.setBovineStatus(bovineStatus);
+        String csvStatus = StringUtils.trimToEmpty(cells[VxaAncestryCsvColumns.STATUS.columnIndex()]);
+		be.setBovineStatus(extractBovineStatus(csvStatus));
 
 		Optional<Integer> optPiid = CsvProcessingUtils.extractVxaInternalId(cells[VxaAncestryCsvColumns.PATRI_INTERNAL_ID.columnIndex()]);
 		if(optPiid.isPresent()) {
-			Integer patriInternalId = optPiid.get();
-			Integer patriEarTagId = this.internalIdEarTagIdMap.get(patriInternalId);			
+			int patriInternalId = optPiid.get();
+			Optional<Integer> optPatriEarTagId = this.getEarTagIdFromMapping(patriInternalId);
 			// negative if the father is not present yet, handle later...
-			Integer patriId = patriEarTagId != null ? patriEarTagId : (patriInternalId * -1);
-			be.setPatriId(patriId);			
-		}		
+			int patriId = optPatriEarTagId.orElseGet(() -> (patriInternalId * -1));
+			be.setPatriId(patriId);
+		} else {
+            log.warn("PatriId missing for {}", be.getEarTagId());
+            be.setPatriId(0);
+        }
 
 		String csvMatriInternalId = StringUtils.trimToEmpty(cells[VxaAncestryCsvColumns.MATRI_MASTER_ID.columnIndex()]);
 		String[] mmidParts = csvMatriInternalId.split("-");
-		int matriEarTagId = NumberUtils.createInteger(mmidParts[2]);
-		be.setMatriId(matriEarTagId);
-
+		if(mmidParts.length > 2 && NumberUtils.isParsable(mmidParts[2])) {
+            be.setMatriId(Integer.parseInt(mmidParts[2]));
+        } else {
+		    log.warn("MatriId has illegal format {} for {}", csvMatriInternalId, be.getEarTagId());
+            be.setMatriId(0);
+        }
 		return be;
 	}
 
-	private static Optional<Map.Entry<Integer, Integer>> extractInternalIdEarTagIdMapEntry(String[] cells) {
+    protected static HornStatus extractHornStatus(String csvHornStatus) {
+        switch (csvHornStatus) {
+            case "P":
+                return HornStatus.POLLED;
+            case "H":
+                return HornStatus.HORNED;
+            case "D":
+                return HornStatus.DEHORNED;
+            case "S":
+                return HornStatus.SCURS;
+            default:
+                return HornStatus.UNKNOWN;
+        }
+    }
+
+    protected static BovineStatus extractBovineStatus(String csvStatus) {
+        if (!csvStatus.isEmpty()) {
+            switch (csvStatus) {
+                case "SÅLD LIV":
+                    return BovineStatus.SOLD;
+                case "SLAKT/SLAKTDJUR":
+                    return BovineStatus.MEAT;
+                case "UTGÅNGEN":
+                case "FÖRLOSSN.SVÅR":
+                case "OLYCKSFALL":
+                case "ANNAN SJUKDOM":
+                default:
+                    return BovineStatus.UNKNOWN;
+            }
+        } else {
+            return BovineStatus.ON_FARM;
+        }
+    }
+
+	protected static Optional<Map.Entry<Integer, Integer>> extractInternalIdEarTagIdMapEntry(String[] cells) {
 		String internalId = StringUtils.trimToEmpty(cells[VxaAncestryCsvColumns.INTERNAL_ID.columnIndex()]);
 		String earTagId = StringUtils.trimToEmpty(cells[VxaAncestryCsvColumns.EAR_TAG_ID.columnIndex()]);
 		if (!internalId.isEmpty() && !earTagId.isEmpty()) {
 			try {
-				return Optional.of(Map.entry(Integer.parseInt(internalId), Integer.parseInt(earTagId)));
+			    Integer intId = Integer.parseInt(internalId);
+			    Integer etId = Integer.parseInt(earTagId);
+			    return Optional.of(new AbstractMap.SimpleImmutableEntry<>(intId, etId));
 			} catch (NumberFormatException e) {
 				// ignore missing data
 			}

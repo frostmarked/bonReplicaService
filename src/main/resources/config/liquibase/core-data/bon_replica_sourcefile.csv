@@ -1,3 +1,5 @@
 id;name;zip_file;zip_file_content_type;processed;outcome
 1;csv_se015112a.zip;../core-data/blob/csv_se015112.zip;application/zip;NULL;NULL
 2;csv_se015112b.zip;../core-data/blob/csv_se015112.zip;application/zip;NULL;NULL
+3;vxa_se015112a.zip;../core-data/blob/vxa_se015112.zip;application/zip;NULL;NULL
+4;vxa_se015112b.zip;../core-data/blob/vxa_se015112.zip;application/zip;NULL;NULL

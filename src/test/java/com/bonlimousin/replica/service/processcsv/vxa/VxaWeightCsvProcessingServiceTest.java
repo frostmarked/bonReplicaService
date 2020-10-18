@@ -32,7 +32,7 @@ class VxaWeightCsvProcessingServiceTest {
 		BovineEntity be = service.populateBovineEntity(csvReader.readNext(), new BovineEntity());
 		assertEquals(2916, be.getEarTagId());
 		assertEquals(35, be.getWeight0());
-		assertNull(be.getWeight200());
+        assertEquals(274, be.getWeight200());
 		assertNull(be.getWeight365());
 
 	}
