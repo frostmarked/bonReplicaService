@@ -26,7 +26,7 @@
     "packageFolder": "com/bonlimousin/replica",
     "entitySuffix": "Entity",
     "dtoSuffix": "DTO",
-    "jhipsterVersion": "6.10.1",
+    "jhipsterVersion": "6.10.5",
     "creationTimestamp": 1593712140033,
     "clientPackageManager": "npm",
     "jwtSecretKey": "ZjI3OTliOGJjYmVlMDZkYWU0NTQ1YjE3YWI3YTIyZDBlZTM3YzUyZjUwOTkyYzA5OWRhZjFmMTFmYjVlOTBiODk4OGMxOTdiMzYwMzhkMTI1ZTAxMmQ4NDYwZWIxMmM3OTczZmQ2YzRjODU4YjkzYThkYjBhMDVjYzk2YmVlYTI=",
