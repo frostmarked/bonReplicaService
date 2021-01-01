@@ -12,11 +12,11 @@ public enum VxaWeightCsvColumns implements CsvColumns {
 	WEIGHT_0_ACTUAL(null, 12),
 	WEIGHT_0(null, 13),
 
-	WEIGHT_200_ACTUAL(null, 16),
-	WEIGHT_200(null, 18),
+	WEIGHT_200_ACTUAL(null, 16, true),
+	WEIGHT_200(null, 18, true),
 
-	WEIGHT_365_ACTUAL(null, 22),
-	WEIGHT_365(null, 24),
+	WEIGHT_365_ACTUAL(null, 22, true),
+	WEIGHT_365(null, 24, true),
 	;
 
 	private final String columnName;

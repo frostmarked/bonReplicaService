@@ -30,7 +30,8 @@ public abstract class AbstractWeightCsvProcessingService extends AbstractCsvProc
             }
             return true;
         } else {
-            log.info("No bovine with eartagid {} and herdid {} exists. Ignore weight until present.", be.getEarTagId(), be.getHerdId());
+            log.warn("No bovine with eartagid {} and herdid {} exists. Ignore weight until present.", be.getEarTagId(), be.getHerdId());
+            log.info(be.toString());
             return false;
         }
     }

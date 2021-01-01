@@ -58,7 +58,7 @@ public abstract class AbstractCsvProcessingService {
         return columnsExist(this.columns, cells);
     }
 
-    public Optional<CsvColumns> columnsExist(CsvColumns[] cols, String[] cells) {
+    public static Optional<CsvColumns> columnsExist(CsvColumns[] cols, String[] cells) {
         for (CsvColumns col : cols) {
             if (col.columnIndex() >= cells.length || (!col.nullableValue() && StringUtils.trimToEmpty(cells[col.columnIndex()]).isEmpty())) {
                 return Optional.of(col);
